@@ -39,38 +39,31 @@ var complementPlayerInfo = function () {
   };
 }();
 
+/*
+  控制并发
+  @param int concurrency 并发的请求数
+*/
+
+
 // 并发执行抓取
-
-
 var main = function () {
   var _ref2 = _asyncToGenerator( /*#__PURE__*/_regenerator2.default.mark(function _callee2() {
-    var promiseList, players;
+    var concurrency;
     return _regenerator2.default.wrap(function _callee2$(_context2) {
       while (1) {
         switch (_context2.prev = _context2.next) {
           case 0:
 
-            // 球员列表（数组）
-            players = _data.stats_ptsd.data.players;
-            // 补全所有球员的信息
+            // 允许的最大并发数
+            concurrency = 5;
+            _context2.next = 3;
+            return progressControllar(concurrency);
 
-
-            // 用于存放所有请求返回的Promise
-
-            promiseList = players.map(function (player) {
-
-              // 返回promise
-              return complementPlayerInfo(player);
-            });
-
-            _context2.next = 4;
-            return Promise.all(promiseList);
-
-          case 4:
+          case 3:
 
             console.log('done');
 
-          case 5:
+          case 4:
           case 'end':
             return _context2.stop();
         }
@@ -94,7 +87,50 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
 function _asyncToGenerator(fn) { return function () { var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); }); }; } // import 'babel-polyfill'
 
 
+// 成功的请求数量
 var count = 0;
+// 球员列表（数组）
+var players = _data.stats_ptsd.data.players;function progressControllar(concurrency) {
+
+  // 当所有的请求都结束的时候，返回的这个promise对象resolve
+  return new Promise(function (resolve, reject) {
+
+    var completed = 0; // 已经完成的个数
+    var requesting = 0; // 正在执行的请求个数
+    var started = 0; // 发出的请求个数
+
+    // replenish是再充满的意思
+    (function replenish() {
+
+      if (completed >= players.length) {
+        // 当所有的请求都结束
+        resolve();
+        return;
+      }
+
+      // 已经发出的请求个数小于请求总数 && 正在执行的请求个数小于并发最大值
+      while (started < players.length && requesting < concurrency) {
+
+        started++;
+        requesting++;
+
+        console.log('requesting: ' + requesting);
+
+        // complementPlayerInfo会返回一个Promise
+        complementPlayerInfo(players[started - 1]).then(function () {
+
+          // 当一个请求完全执行结束之后
+          completed++;
+          requesting--;
+
+          // 不要停！保持执行中的请求和并发个数一致
+          replenish();
+          // setTimeout( 'replenish()', 500 );
+        });
+      }
+    })();
+  });
+}
 
 main();
 //# sourceMappingURL=index.js.map
